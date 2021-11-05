@@ -3,6 +3,9 @@
     $code = $_POST['code'];
 
     $random = substr(md5(mt_rand()), 0, 7);
+    if (!file_exists('temp')) {
+        mkdir('temp', 0777, true);
+    }
     $filePath = "temp/" . $random . "." . $language;
     $programFile = fopen($filePath, "w");
     fwrite($programFile, $code);
@@ -12,7 +15,6 @@
         $outputExe = $random . ".exe";
         shell_exec("gcc $filePath -o $outputExe");
         $output = shell_exec(__DIR__ . "//$outputExe");
-        //$output = shell_exec("D:\Tools\MinGW\bin\g++.exe $filePath -o $outputExe 2>&1");
         echo $output;
     }
     if($language == "assembler") {
