@@ -1,12 +1,12 @@
 bidict==0.21.2
 Brotli==1.0.9
-click==7.1.2
+click==8.0.0
 dnspython==2.0.0
 eventlet==0.25.2
 Flask==0.12.5
 Flask-Compress==1.8.0
 Flask-SocketIO==2.9.6
-gevent==1.5.0
+gevent==20.4.0
 gevent-websocket==0.10.1
 greenlet==0.4.16
 itsdangerous==1.1.0
