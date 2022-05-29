@@ -66,7 +66,7 @@ STATIC_DIR = os.path.join(BASE_PATH, "static")
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 5000
 IS_A_TTY = sys.stdout.isatty()
-DEFAULT_GDB_EXECUTABLE = "gdb"
+DEFAULT_GDB_EXECUTABLE = "arm-none-eabi-gdb"
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
