@@ -36,7 +36,6 @@ const Actions = {
     store.set("line_of_source_to_flash", parseInt(frame.line));
     store.set("current_assembly_address", frame.addr);
     store.set("source_code_infinite_scrolling", false);
-    SourceCode.make_current_line_visible();
     Actions.refresh_state_for_gdb_pause();
   },
   inferior_program_exited: function() {

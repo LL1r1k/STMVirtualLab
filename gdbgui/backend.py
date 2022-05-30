@@ -576,7 +576,6 @@ def send_signal_to_pid():
     if signal_name not in SIGNAL_NAME_TO_OBJ:
         raise ValueError("no such signal %s" % signal_name)
     signal_value = int(SIGNAL_NAME_TO_OBJ[signal_name])
-
     try:
         os.kill(pid_int, signal_value)
     except Exception:

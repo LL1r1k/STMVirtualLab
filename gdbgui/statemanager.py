@@ -5,8 +5,41 @@ from typing import Any, Dict, List, Optional
 import copy
 from pygdbmi.gdbcontroller import GdbController  # type: ignore
 
+from pyocd.__main__ import PyOCDTool
+import threading
+import sys
+import ctypes
+import time
+
 logger = logging.getLogger(__name__)
 GDB_MI_FLAG = ["--interpreter=mi2"]
+
+class thread_openOCD(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+
+    def run(self):
+        try:
+            server_args = ['gdbserver',
+            '--target=stm32f103rc']
+            sys.exit(PyOCDTool().run(args=server_args))
+        finally:
+            a = 10
+
+    def get_id(self):
+        if hasattr(self, '_thread_id'):
+            return self._thread_id
+        for id, thread in threading._active.items():
+            if thread is self:
+                return id
+
+    def raise_exception(self):
+        thread_id = self.get_id()
+        res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id,
+              ctypes.py_object(SystemExit))
+        if res > 1:
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
+            logger.info("Exception raise failure")
 
 
 class StateManager(object):
@@ -16,6 +49,7 @@ class StateManager(object):
         )  # key is controller, val is list of client ids
         self.gdb_reader_thread = None
         self.config = config
+        self.openOCD = None
 
     def get_gdb_args(self):
         gdb_args = copy.copy(GDB_MI_FLAG)
@@ -26,6 +60,8 @@ class StateManager(object):
             gdb_args += ["--args"]
             gdb_args += self.config["initial_binary_and_args"]
         return gdb_args
+
+    
 
     def connect_client(self, client_id: str, desired_gdbpid: int) -> Dict[str, Any]:
         message = ""
@@ -73,12 +109,16 @@ class StateManager(object):
                     controller.get_subprocess_cmd(),
                 )
 
+            self.openOCD = thread_openOCD()
+            self.openOCD.start()
+
         return {
             "pid": pid,
             "message": message,
             "error": error,
             "using_existing": using_existing,
         }
+
 
     def remove_gdb_controller_by_pid(self, gdbpid: int) -> List[str]:
         controller = self.get_controller_from_pid(gdbpid)
@@ -92,6 +132,7 @@ class StateManager(object):
     def remove_gdb_controller(self, controller: GdbController) -> List[str]:
         try:
             controller.exit()
+            self.openOCD.raise_exception()
         except Exception:
             logger.error(traceback.format_exc())
         orphaned_client_ids = self.controller_to_client_ids.pop(controller, [])

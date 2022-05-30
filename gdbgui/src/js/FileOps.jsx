@@ -41,7 +41,7 @@ let FileFetcher = {
       start_line: start_line,
       end_line: end_line,
       path: fullname,
-      highlight: store.get("highlight_source_code")
+      highlight: false//store.get("highlight_source_code")
     };
 
     $.ajax({
@@ -57,16 +57,10 @@ let FileFetcher = {
       data: data,
       success: function(response) {
         response.source_code;
-        let source_code_obj = {};
-        let linenum = response.start_line;
-        for (let line of response.source_code_array) {
-          source_code_obj[linenum] = line;
-          linenum++;
-        }
 
         FileOps.add_source_file_to_cache(
           fullname,
-          source_code_obj,
+          response.source_code_array,
           response.last_modified_unix_sec,
           response.num_lines_in_file
         );

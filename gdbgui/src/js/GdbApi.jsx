@@ -107,8 +107,7 @@ const GdbApi = {
   },
   _waiting_for_response_timeout: null,
   click_run_button: function() {
-    Actions.inferior_program_starting();
-    GdbApi.run_gdb_command("-exec-run");
+    GdbApi.run_gdb_command("monitor reset halt");
   },
   run_initial_commands: function() {
     const cmds = ["set breakpoint pending on"];
@@ -119,6 +118,9 @@ const GdbApi = {
     if (initial_data.initial_gdb_user_command) {
       cmds.push(initial_data.initial_gdb_user_command);
     }
+
+    cmds.push('-gdb-set target-async on')
+
     GdbApi.run_gdb_command(cmds);
   },
   inferior_is_paused: function() {
@@ -132,6 +134,12 @@ const GdbApi = {
     Actions.inferior_program_resuming();
     GdbApi.run_gdb_command(
       "-exec-continue" + (store.get("debug_in_reverse") || reverse ? " --reverse" : "")
+    );
+  },
+  click_pause_button: function(reverse = false) {
+    Actions.inferior_program_paused();
+    GdbApi.run_gdb_command(
+      "-exec-interrupt" + (store.get("debug_in_reverse") || reverse ? " --reverse" : "")
     );
   },
   click_next_button: function(reverse = false) {
@@ -352,8 +360,10 @@ const GdbApi = {
     });
   },
   get_insert_break_cmd: function(fullname, line) {
+    var parts = fullname.split('\\');
+    var output = parts.join('\\\\');
     if (store.get("interpreter") === "gdb") {
-      return [`-break-insert "${fullname}:${line}"`];
+      return [`-break-insert "${output}:${line}"`];
     } else {
       console.log("TODOLLDB - find mi-friendly command");
       return [`breakpoint set --file ${fullname} --line ${line}`];
