@@ -17,3 +17,4 @@ site
 build.js
 build.js.map
 __pycache__
+tmp/
