@@ -113,8 +113,6 @@ class StateManager(object):
             self.openOCD = thread_openOCD()
             self.openOCD.start()
 
-            controller.write("target remote localhost:3333")
-
         return {
             "pid": pid,
             "message": message,

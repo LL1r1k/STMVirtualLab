@@ -120,6 +120,7 @@ const GdbApi = {
     }
 
     cmds.push('-gdb-set target-async on')
+    cmds.push('target remote localhost:3333')
 
     GdbApi.run_gdb_command(cmds);
   },
