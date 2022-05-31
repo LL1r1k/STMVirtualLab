@@ -66,6 +66,7 @@ const initial_store_data = {
   source_code_state: constants.source_code_states.NONE_AVAILABLE,
   source_code_selection_state: constants.source_code_selection_states.PAUSED_FRAME,
 
+  aceEditor: null,
   source_code_infinite_scrolling: false,
   source_linenum_to_display_start: 0,
   source_linenum_to_display_end: 0,

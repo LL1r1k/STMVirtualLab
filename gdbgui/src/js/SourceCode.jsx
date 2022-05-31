@@ -28,6 +28,7 @@ class SourceCode extends React.Component {
     super();
     this.markers = [];
     store.connectComponentState(this, [
+      "aceEditor",
       "fullname_to_render",
       "cached_source_files",
       "missing_files",
@@ -57,8 +58,8 @@ class SourceCode extends React.Component {
           theme="github"
           name=""
           fontSize={16}
-          width={ '100%' }
-          height={ '100%' }
+          width={'100%'}
+          height={'100%'}
           showPrintMargin={true}
           showGutter={true}
           highlightActiveLine={true}
@@ -78,6 +79,7 @@ class SourceCode extends React.Component {
 
   componentDidMount() {
     this.refs.aceEditor.editor.on("guttermousedown", (evt) => this.updateBreakpoints(evt));
+    store.set("aceEditor", this.refs.aceEditor.editor);
   }
 
   componentDidUpdate(prevProps, prevState, snapshot) {
@@ -88,20 +90,20 @@ class SourceCode extends React.Component {
     editor.session.clearBreakpoints();
     const breakpoints = editor.session.getBreakpoints(row, 0);
 
-    for (let row of bkpt_lines) 
-      if(typeof breakpoints[row] === typeof undefined) 
-        editor.session.setBreakpoint(row - 1, 'ace_breakpoint');  
+    for (let row of bkpt_lines)
+      if (typeof breakpoints[row] === typeof undefined)
+        editor.session.setBreakpoint(row - 1, 'ace_breakpoint');
     let line_gdb_is_paused_on = this.state.paused_on_frame
       ? parseInt(this.state.paused_on_frame.line)
       : 0;
     editor.resize(true);
-    editor.scrollToLine(line_gdb_is_paused_on, true, true, function () {});
+    editor.scrollToLine(line_gdb_is_paused_on, true, true, function () { });
   }
 
   updateBreakpoints(e) {
     const target = e.domEvent.target;
     if (target.className.indexOf("ace_gutter-cell") == -1) {
-        return;
+      return;
     }
     const row = e.getDocumentPosition().row + 1;
 
@@ -112,8 +114,9 @@ class SourceCode extends React.Component {
   get_body() {
     const states = constants.source_code_states;
     switch (this.state.source_code_state) {
-      case states.ASSM_AND_SOURCE_CACHED: // fallthrough
+      case states.ASSM_AND_SOURCE_CACHED:
       case states.SOURCE_CACHED: {
+        debugger
         let obj = FileOps.get_source_file_obj_from_cache(this.state.fullname_to_render);
         if (!obj) {
           console.error("expected to find source file");
@@ -123,35 +126,13 @@ class SourceCode extends React.Component {
           ? parseInt(this.state.paused_on_frame.line)
           : 0;
         this.markers = []
-        this.markers.push({startRow: line_gdb_is_paused_on - 1, endRow: line_gdb_is_paused_on, className: 'replacement_marker', type: 'text' });
+        this.markers.push({ startRow: line_gdb_is_paused_on - 1, endRow: line_gdb_is_paused_on, className: 'replacement_marker', type: 'text' });
         return obj.source_code_obj.join('\n');
       }
-      case states.FETCHING_SOURCE: {
-        return "Fetching source, please wait";
-      }
-      case states.ASSM_CACHED: {
-        return "Assembly fetched";
-      }
-      case states.FETCHING_ASSM: {
-        return "Fetching assembly, please wait";
-      }
-      case states.ASSM_UNAVAILABLE: {
-        return "Cannot access address";
-      }
-      case states.FILE_MISSING: {
-        return `File not found: ${this.state.fullname_to_render}`;
-      }
-      case states.NONE_AVAILABLE: {
-        return this.get_body_empty();
-      }
       default: {
-        console.error("developer error: unhandled state");
-        return this.get_body_empty();
+        return "";
       }
     }
-  }
-  get_body_empty() {
-    return "";
   }
 }
 

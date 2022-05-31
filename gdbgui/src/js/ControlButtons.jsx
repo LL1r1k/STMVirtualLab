@@ -1,19 +1,34 @@
 import React from "react";
 
 import Actions from "./Actions.js";
+import FileOps from "./FileOps.jsx";
 import GdbApi from "./GdbApi.jsx";
 import { store } from "statorgfc";
 
 class ControlButtons extends React.Component {
   constructor() {
     super();
-    store.connectComponentState(this, ["gdb_pid"]);
+    store.connectComponentState(this, [
+      "gdb_pid",
+      "fullname_to_render",
+      "aceEditor"
+    ]);
   }
   render() {
     let btn_class = "btn btn-default btn-sm";
 
     return (
       <React.Fragment>
+        <button
+          id="flash_button"
+          onClick={() => this.click_flash_button()}
+          type="button"
+          title="Compile and Flash program"
+          className={btn_class}
+        >
+          <span className="glyphicon glyphicon-download-alt" />
+        </button>
+
         <button
           id="run_button"
           onClick={() => GdbApi.click_run_button()}
@@ -61,6 +76,14 @@ class ControlButtons extends React.Component {
 
       </React.Fragment>
     );
+  }
+  click_flash_button() {
+    debugger
+    let pid = this.state.gdb_pid
+    let code = store.get("aceEditor").getSession().getValue();
+    if (code.length > 0)
+      Actions.compile_and_flash(pid, code);
+      
   }
 }
 

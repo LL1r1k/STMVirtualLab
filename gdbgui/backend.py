@@ -18,6 +18,9 @@ import socket
 import sys
 import traceback
 import webbrowser
+import random
+import string
+import subprocess
 from distutils.spawn import find_executable
 from functools import wraps
 
@@ -399,6 +402,83 @@ def remove_gdb_controller():
 
     else:
         return jsonify({"message": msg}), 500
+
+
+@app.route("/compile_and_flash", methods=["POST"])
+def compile_and_flash():
+    code = request.form.get("code")
+    pid_str = str(request.form.get("pid"))
+    try:
+        pid_int = int(pid_str)
+    except ValueError:
+        return (
+            jsonify(
+                {
+                    "message": "The pid %s cannot be converted to an integer."
+                    % (pid_str)
+                }
+            ),
+            400,
+        )
+
+    try:
+        file_name = compile_program(code)
+
+        return (
+            jsonify(
+                {
+                    "message":  "The file is successfully compiled.",
+                    "file_name" : file_name
+                }
+            )        
+        )
+    except ValueError as error:
+        return (
+            jsonify(
+                {
+                    "message":  f"Error during compilation: {error}."
+                }
+            ),
+            400,
+        )
+
+
+def compile_program(code):
+    clear_tmp_dir()
+
+    random_name = ''.join(random.choice(string.ascii_lowercase) for i in range(8))
+    file_name = './tmp/' + random_name
+    os.makedirs(os.path.dirname(f'{file_name}.s'), exist_ok=True)
+    with open(f'{file_name}.s', "w", newline='\n') as f:
+        f.write(code, )
+
+    compile_str = f'arm-none-eabi-as.exe -g -o {file_name}.o {file_name}.s'
+
+    compile_proc = subprocess.Popen(compile_str, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    error = compile_proc.communicate()[1].decode("utf-8")
+
+    if len(error) > 0:
+        logger.info(f'Compile Error: {error}')
+        raise ValueError(error)
+
+    link_str = f'arm-none-eabi-ld.exe -o {file_name}.elf -T stm32f103.ld {file_name}.o'
+
+    link_proc = subprocess.Popen(link_str, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    error = link_proc.communicate()[1].decode("utf-8")
+    
+    if len(error) > 0:
+        logger.info(f'Link Error: {error}')
+        raise ValueError(error)
+
+    return file_name + '.elf'
+
+
+def clear_tmp_dir():
+    path = './tmp/'
+    for file_name in os.listdir(path):
+        file = path + file_name
+        if os.path.isfile(file):
+            os.remove(file)
 
 
 @socketio.on("disconnect", namespace="/gdb_listener")

@@ -244,6 +244,48 @@ const Actions = {
       },
       complete: function() {}
     });
+  },
+  compile_and_flash(pid, code) {
+    $.ajax({
+      beforeSend: function(xhr) {
+        xhr.setRequestHeader(
+          "x-csrftoken",
+          initial_data.csrf_token
+        ); /* global initial_data */
+      },
+      url: "/compile_and_flash",
+      cache: false,
+      type: "POST",
+      data: { code: code, pid: pid },
+      success: function(response) {
+        Actions.add_console_entries(
+          response.message,
+          constants.console_entry_type.GDBGUI_OUTPUT
+        );
+        let cmds = [];
+        cmds.push("symbol-file")
+        cmds.push("symbol-file " + response.file_name)
+        cmds.push("load " + response.file_name)
+        cmds.push("-break-insert 1")
+        cmds.push("-exec-continue")
+        GdbApi.run_gdb_command(cmds);
+      },
+      error: function(response) {
+        if (response.responseJSON && response.responseJSON.message) {
+          Actions.add_console_entries(
+            _.escape(response.responseJSON.message),
+            constants.console_entry_type.STD_ERR
+          );
+        } else {
+          Actions.add_console_entries(
+            `${response.statusText} (${response.status} error)`,
+            constants.console_entry_type.STD_ERR
+          );
+        }
+        console.error(response);
+      },
+      complete: function() {}
+    });
   }
 };
 

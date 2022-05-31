@@ -22,7 +22,9 @@ class thread_openOCD(threading.Thread):
         try:
             server_args = ['gdbserver',
             '--target=stm32f103rc']
-            sys.exit(PyOCDTool().run(args=server_args))
+            pyOCDTool = PyOCDTool()
+            pyOCDTool._setup_logging = lambda: None
+            sys.exit(pyOCDTool.run(args=server_args))
         finally:
             a = 10
 
@@ -61,7 +63,7 @@ class StateManager(object):
             gdb_args += self.config["initial_binary_and_args"]
         return gdb_args
 
-    
+
 
     def connect_client(self, client_id: str, desired_gdbpid: int) -> Dict[str, Any]:
         message = ""
@@ -88,7 +90,6 @@ class StateManager(object):
                 error = True
 
         if self.get_controller_from_client_id(client_id) is None:
-            logger.info("new sid", client_id)
 
             gdb_args = self.get_gdb_args()
 
@@ -111,6 +112,8 @@ class StateManager(object):
 
             self.openOCD = thread_openOCD()
             self.openOCD.start()
+
+            controller.write("target remote localhost:3333")
 
         return {
             "pid": pid,
