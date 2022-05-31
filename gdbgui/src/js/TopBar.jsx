@@ -233,7 +233,7 @@ class TopBar extends React.Component {
     return (
       <div
         role="group"
-        style={{ marginBottom: 6, height: 25, width: 250 }}
+        style={{ marginBottom: 12, marginLeft: 6, marginTop: 6, height: 25, width: 250 }}
         className="btn-group btn-group"
       >
         <ToolTipTourguide
@@ -343,105 +343,22 @@ class TopBar extends React.Component {
     return (
       <div
         id="top"
-        style={{ background: "#f5f6f7", position: "absolute", width: "100%" }}
+        style={{ background: "#f5f6f7", position: "absolute", width: "100%"}}
       >
         <div className="flexrow">
-          <BinaryLoader initial_user_input={this.props.initial_user_input} />
-          {spinner}
-          {reverse_checkbox}
-
           {this.get_controls()}
-
-          <span
-            onClick={() => Settings.toggle_key("show_settings")}
-            title="settings"
-            className="pointer glyphicon glyphicon-cog"
-            style={{ marginRight: "10px", fontSize: "1.3em" }}
-          />
-          {menu}
-        </div>
-
-        <div style={{ marginTop: 3, whitespace: "nowrap" }} className="flexrow">
-          <div
-            role="group"
-            style={{ height: "25px", marginRight: "10px" }}
-            className="btn-group btn-group"
-          >
-            <button
-              className="btn btn-default btn-xs"
-              title="Toggle file explorer visibility"
-              onClick={() => {
-                let middle_pane_sizes = store.get("middle_panes_split_obj").getSizes(),
-                  file_explorer_size = middle_pane_sizes[0],
-                  source_size = middle_pane_sizes[1],
-                  sidebar_size = middle_pane_sizes[2],
-                  new_file_explorer_size,
-                  new_source_size,
-                  new_sidebar_size;
-
-                if (store.get("show_filesystem")) {
-                  // hide it since it's shown right now
-                  new_file_explorer_size = 0;
-                  new_source_size = source_size + file_explorer_size / 2;
-                  new_sidebar_size = sidebar_size + file_explorer_size / 2;
-                } else {
-                  new_file_explorer_size = 30;
-                  new_source_size = Math.max(
-                    30,
-                    source_size - new_file_explorer_size / 2
-                  );
-                  new_sidebar_size = 99 - new_file_explorer_size - new_source_size;
-                }
-
-                store.set("show_filesystem", !store.get("show_filesystem"));
-                localStorage.setItem(
-                  "show_filesystem",
-                  JSON.stringify(store.get("show_filesystem"))
-                ); // save this for next session
-                store
-                  .get("middle_panes_split_obj")
-                  .setSizes([new_file_explorer_size, new_source_size, new_sidebar_size]);
-              }}
-            >
-              {store.get("show_filesystem") ? "hide filesystem" : "show filesystem"}
-            </button>
-
-            <button
-              onClick={() => FileOps.fetch_assembly_cur_line()}
-              type="button"
-              title="fetch disassembly"
-              className="btn btn-default btn-xs"
-            >
-              <span>fetch disassembly</span>
-            </button>
-
-            {reload_button}
-            {toggle_assm_button}
-          </div>
-
-          <input
-            onKeyUp={onkeyup_jump_to_line}
-            autoComplete="on"
-            title="Enter line number, then press enter"
-            placeholder="jump to line"
-            style={{ width: 150, height: 25, marginLeft: 10 }}
-            className="form-control dropdown-input"
-          />
-
-          <div
-            style={{
-              marginRight: 5,
-              marginLeft: 5,
-              marginTop: 5,
-              whiteSpace: "nowrap",
-              fontFamily: "monospace",
-              fontSize: "0.7em",
-              display: "flex",
-              overflow: "auto"
-            }}
-            className="lighttext"
-          >
-            <SourceCodeHeading />
+        
+          <div 
+            id="menu"
+            style={{marginRight: "0", marginLeft: "auto", marginTop: "10px"}}
+          >          
+            <span
+              onClick={() => Settings.toggle_key("show_settings")}
+              title="settings"
+              className="pointer glyphicon glyphicon-cog"
+              style={{ marginRight: "10px", fontSize: "1.3em" }}
+            />
+            {menu}
           </div>
         </div>
       </div>

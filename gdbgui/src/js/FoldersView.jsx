@@ -52,7 +52,6 @@ class FoldersView extends React.Component {
         source_code_state === constants.source_code_states.ASSM_AND_SOURCE_CACHED,
       can_reveal = file_is_rendered && this.state.source_file_paths.length,
       hiding_entries = this.state.source_file_paths.length > this.max_filesystem_entries;
-
     return (
       <div>
         <button

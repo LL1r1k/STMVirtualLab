@@ -60,11 +60,7 @@ class Gdbgui extends React.PureComponent {
       <div className="splitjs_container">
         <TopBar initial_user_input={initial_data.initial_binary_and_args} />
 
-        <div id="middle" style={{ paddingTop: "60px" }}>
-          <div id="folders_view" className="content" style={{ backgroundColor: "#333" }}>
-            <FoldersView />
-          </div>
-
+        <div id="middle" style={{ paddingTop: "52px" }}>
           <div id="source_code_view" className="content">
             <MiddleLeft />
           </div>
@@ -126,13 +122,13 @@ class Gdbgui extends React.PureComponent {
     }
     // Split the body into different panes using splitjs (https://github.com/nathancahill/Split.js)
     let middle_panes_split_obj = Split(
-      ["#folders_view", "#source_code_view", "#controls_sidebar"],
+      ["#source_code_view", "#controls_sidebar"],
       {
         gutterSize: 8,
         minSize: 100,
         cursor: "col-resize",
         direction: "horizontal", // horizontal makes a left/right pane, and a divider running vertically
-        sizes: store.get("show_filesystem") ? [30, 40, 29] : [0, 70, 29] // adding to exactly 100% is a little buggy due to splitjs, so keep it to 99
+        sizes: [70, 30] // adding to exactly 100% is a little buggy due to splitjs, so keep it to 99
       }
     );
 
