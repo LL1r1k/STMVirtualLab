@@ -5,11 +5,9 @@ from typing import Any, Dict, List, Optional
 import copy
 from pygdbmi.gdbcontroller import GdbController  # type: ignore
 
-from pyocd.__main__ import PyOCDTool
+from pyocd.tools import gdb_server
 import threading
-import sys
 import ctypes
-import time
 
 logger = logging.getLogger(__name__)
 GDB_MI_FLAG = ["--interpreter=mi2"]
@@ -20,13 +18,11 @@ class thread_openOCD(threading.Thread):
 
     def run(self):
         try:
-            server_args = ['gdbserver',
-            '--target=stm32f103rc']
-            pyOCDTool = PyOCDTool()
-            pyOCDTool._setup_logging = lambda: None
-            sys.exit(pyOCDTool.run(args=server_args))
+            server_args = ['--target=stm32f103rc']
+            pyOCDTool = gdb_server.GDBServerTool()
+            pyOCDTool.run(args=server_args)
         finally:
-            a = 10
+            pass
 
     def get_id(self):
         if hasattr(self, '_thread_id'):

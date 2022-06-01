@@ -19,3 +19,4 @@ python-engineio==3.14.2
 python-socketio==4.6.1
 six==1.15.0
 Werkzeug==0.16.1
+pyocd==0.33.1

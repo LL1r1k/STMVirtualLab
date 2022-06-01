@@ -43,8 +43,8 @@ from pygments.lexers import get_lexer_for_filename  # type: ignore
 from gdbgui import __version__, htmllistformatter
 from gdbgui.statemanager import StateManager
 
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
+# from flask_sqlalchemy import SQLAlchemy
+# from flask_migrate import Migrate
 
 pyinstaller_env_var_base_dir = "_MEIPASS"
 pyinstaller_base_dir = getattr(sys, "_MEIPASS", None)
@@ -120,14 +120,14 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get('DATABASE_URL') or \
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.secret_key = binascii.hexlify(os.urandom(24)).decode("utf-8")
 
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
+# db = SQLAlchemy(app)
+# migrate = Migrate(app, db)
  
-from .app.models import User
+# from .app.models import User
 
-@app.shell_context_processor
-def make_shell_context():
-    return {'db': db, 'User': User}
+# @app.shell_context_processor
+# def make_shell_context():
+#     return {'db': db, 'User': User}
 
 @app.before_request
 def csrf_protect_all_post_and_cross_origin_requests():

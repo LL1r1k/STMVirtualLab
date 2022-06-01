@@ -30,18 +30,48 @@ def write_spec_with_gdbgui_version_in_name(spec_path, binary_name):
 # create executable with: pyinstaller gdbgui.spec
 # run executable with: dist/gdbgui
 
-block_cipher = None
+import os
+import glob
+import platform
 
+from PyInstaller.utils.hooks import (get_package_paths, collect_dynamic_libs)
+from PyInstaller.utils.hooks import copy_metadata
+from PyInstaller.utils.hooks import collect_all
+
+block_cipher = None
+is_windows = (platform.system() == "Windows")
+
+# Capstone for disassembly.
+capstone_libs = collect_dynamic_libs("capstone")
+
+# CPM's native lib doesn't match the patterns that collect_dynamic_libs() expects.
+cpm_path = get_package_paths('cmsis_pack_manager')[1]
+if is_windows:
+    # Example: _native__lib.cp37-win_amd64.pyd
+    matches = glob.glob(os.path.join(cpm_path, "*.pyd"))
+    if matches:
+        cpm_lib_name = matches[-1]
+    else:
+        raise Exception("failed to find cmsis-pack-manager native library")
+else:
+    cpm_lib_name = "_native__lib.so"
+cpm_libs = [(os.path.join(cpm_path, cpm_lib_name), "cmsis_pack_manager")]
+
+prettytable_datas, prettytable_binaries, prettytable_hiddenimports = collect_all('prettytable')
+
+binaries = capstone_libs + cpm_libs
 
 a = Analysis(['gdbgui/backend.py'],  # noqa
              pathex=['.'],
-             binaries=[],
+             binaries=binaries,
              datas=[
+              *prettytable_datas,
               ('./gdbgui/static*', './static'),
               ('./gdbgui/templates*', './templates'),
               ('./gdbgui/VERSION.txt*', './')
             ],
              hiddenimports=[
+                *prettytable_hiddenimports,
                'engineio.async_gevent',
                'engineio.async_threading',
                'engineio.async_drivers.gevent',
@@ -56,7 +86,7 @@ a = Analysis(['gdbgui/backend.py'],  # noqa
              win_no_prefer_redirects=False,
              win_private_assemblies=False,
              cipher=block_cipher,
-             )
+             )       
 
 pyz = PYZ(a.pure, a.zipped_data,  # noqa
              cipher=block_cipher)
