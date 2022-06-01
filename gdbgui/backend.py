@@ -4,7 +4,6 @@
 A server that provides a graphical user interface to the gnu debugger (gdb).
 https://github.com/cs01/gdbgui
 """
-from enum import Enum
 import argparse
 import binascii
 import json
@@ -16,31 +15,15 @@ import shlex
 import signal
 import socket
 import sys
-import traceback
 import webbrowser
-import random
-import string
-import subprocess
 from distutils.spawn import find_executable
-from functools import wraps
 
 import pygdbmi  # type: ignore
-from flask import (
-    Flask,
-    Response,
-    abort,
-    jsonify,
-    redirect,
-    render_template,
-    request,
-    session,
-)
+from flask import Flask
 from flask_compress import Compress  # type: ignore
-from flask_socketio import SocketIO, emit  # type: ignore
-from pygdbmi.gdbcontroller import NoGdbProcessError  # type: ignore
-from pygments.lexers import get_lexer_for_filename  # type: ignore
+from flask_socketio import SocketIO
 
-from gdbgui import __version__, htmllistformatter
+from gdbgui import __version__
 from gdbgui.statemanager import StateManager
 
 from flask_sqlalchemy import SQLAlchemy
@@ -57,7 +40,6 @@ else:
     BASE_PATH = os.path.dirname(os.path.realpath(__file__))
     PARENTDIR = os.path.dirname(BASE_PATH)
     sys.path.append(PARENTDIR)
-
 
 try:
     from gdbgui.SSLify import SSLify, get_ssl_context  # noqa
@@ -127,49 +109,11 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 login = LoginManager(app)
 login.login_view = 'login'
- 
-from gdbgui.app.models import User, Access_Request, Role, UserRoles
-from gdbgui.app.routes import *
-
-class Roles(Enum):
-    Admin = 'Admin'
-    User = 'User'
-
-class Statuses(Enum):
-    Сonfirmed = 'Сonfirmed'
-    Canceled = 'Canceled'
-    Created = 'Created'
-
-# db.session.add(Role(name=Roles.Admin.value))
-# db.session.add(Role(name=Roles.User.value))
-# db.session.commit()
-
-@app.shell_context_processor
-def make_shell_context():
-    return {'db': db, 'User': User, 'Access_Request': Access_Request, 'Role': Role, 'UserRoles': UserRoles}
-
-def is_cross_origin(request):
-    """Compare headers HOST and ORIGIN. Remove protocol prefix from ORIGIN, then
-    compare. Return true if they are not equal
-    example HTTP_HOST: '127.0.0.1:5000'
-    example HTTP_ORIGIN: 'http://127.0.0.1:5000'
-    """
-    origin = request.environ.get("HTTP_ORIGIN")
-    host = request.environ.get("HTTP_HOST")
-    if origin is None:
-        # origin is sometimes omitted by the browser when origin and host are equal
-        return False
-
-    if origin.startswith("http://"):
-        origin = origin.replace("http://", "")
-    elif origin.startswith("https://"):
-        origin = origin.replace("https://", "")
-    return host != origin
-
 
 socketio = SocketIO()
 _state = StateManager(app.config)
 
+import gdbgui.app.routes
 
 def setup_backend(
     serve=True,
@@ -294,233 +238,6 @@ def colorize(text):
         return text
 
 
-@socketio.on("connect", namespace="/gdb_listener")
-def client_connected():
-    if is_cross_origin(request):
-        logger.warning("Received cross origin request. Aborting")
-        abort(403)
-
-    # see if user wants to connect to existing gdb pid
-    desired_gdbpid = int(request.args.get("gdbpid", 0))
-
-    payload = _state.connect_client(request.sid, desired_gdbpid)
-    logger.info(
-        'Client websocket connected in async mode "%s", id %s'
-        % (socketio.async_mode, request.sid)
-    )
-
-    # tell the client browser tab which gdb pid is a dedicated to it
-    emit("gdb_pid", payload)
-
-    # Make sure there is a reader thread reading. One thread reads all instances.
-    if _state.gdb_reader_thread is None:
-        _state.gdb_reader_thread = socketio.start_background_task(
-            target=read_and_forward_gdb_output
-        )
-        logger.info("Created background thread to read gdb responses")
-
-
-@socketio.on("run_gdb_command", namespace="/gdb_listener")
-def run_gdb_command(message):
-    """
-    Endpoint for a websocket route.
-    Runs a gdb command.
-    Responds only if an error occurs when trying to write the command to
-    gdb
-    """
-    controller = _state.get_controller_from_client_id(request.sid)
-    if controller is not None:
-        try:
-            # the command (string) or commands (list) to run
-            cmd = message["cmd"]
-            controller.write(cmd, read_response=False)
-
-        except Exception:
-            err = traceback.format_exc()
-            logger.error(err)
-            emit("error_running_gdb_command", {"message": err})
-    else:
-        emit("error_running_gdb_command", {"message": "gdb is not running"})
-
-
-def send_msg_to_clients(client_ids, msg, error=False):
-    """Send message to all clients"""
-    if error:
-        stream = "stderr"
-    else:
-        stream = "stdout"
-
-    response = [{"message": None, "type": "console", "payload": msg, "stream": stream}]
-
-    for client_id in client_ids:
-        logger.info("emiting message to websocket client id " + client_id)
-        socketio.emit(
-            "gdb_response", response, namespace="/gdb_listener", room=client_id
-        )
-
-
-@app.route("/remove_gdb_controller", methods=["POST"])
-def remove_gdb_controller():
-    gdbpid = int(request.form.get("gdbpid"))
-
-    orphaned_client_ids = _state.remove_gdb_controller_by_pid(gdbpid)
-    num_removed = len(orphaned_client_ids)
-
-    send_msg_to_clients(
-        orphaned_client_ids,
-        "The underlying gdb process has been killed. This tab will no longer function as expected.",
-        error=True,
-    )
-
-    msg = "removed %d gdb controller(s) with pid %d" % (num_removed, gdbpid)
-    if num_removed:
-        return jsonify({"message": msg})
-
-    else:
-        return jsonify({"message": msg}), 500
-
-
-@app.route("/compile_and_flash", methods=["POST"])
-def compile_and_flash():
-    code = request.form.get("code")
-    pid_str = str(request.form.get("pid"))
-    try:
-        pid_int = int(pid_str)
-    except ValueError:
-        return (
-            jsonify(
-                {
-                    "message": "The pid %s cannot be converted to an integer."
-                    % (pid_str)
-                }
-            ),
-            400,
-        )
-
-    try:
-        file_name = compile_program(code)
-
-        return (
-            jsonify(
-                {
-                    "message":  "The file is successfully compiled.",
-                    "file_name" : file_name
-                }
-            )        
-        )
-    except ValueError as error:
-        return (
-            jsonify(
-                {
-                    "message":  f"Error during compilation: {error}."
-                }
-            ),
-            400,
-        )
-
-
-def compile_program(code):
-    clear_tmp_dir()
-
-    random_name = ''.join(random.choice(string.ascii_lowercase) for i in range(8))
-    file_name = './tmp/' + random_name
-    os.makedirs(os.path.dirname(f'{file_name}.s'), exist_ok=True)
-    with open(f'{file_name}.s', "w", newline='\n') as f:
-        f.write(code, )
-
-    compile_str = f'arm-none-eabi-as.exe -g -o {file_name}.o {file_name}.s'
-
-    compile_proc = subprocess.Popen(compile_str, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    error = compile_proc.communicate()[1].decode("utf-8")
-
-    if len(error) > 0:
-        logger.info(f'Compile Error: {error}')
-        raise ValueError(error)
-
-    link_str = f'arm-none-eabi-ld.exe -o {file_name}.elf -T stm32f103.ld {file_name}.o'
-
-    link_proc = subprocess.Popen(link_str, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    error = link_proc.communicate()[1].decode("utf-8")
-    
-    if len(error) > 0:
-        logger.info(f'Link Error: {error}')
-        raise ValueError(error)
-
-    return file_name + '.elf'
-
-
-def clear_tmp_dir():
-    path = './tmp/'
-    for file_name in os.listdir(path):
-        file = path + file_name
-        if os.path.isfile(file):
-            os.remove(file)
-
-
-@socketio.on("disconnect", namespace="/gdb_listener")
-def client_disconnected():
-    """do nothing if client disconnects"""
-    _state.disconnect_client(request.sid)
-    logger.info("Client websocket disconnected, id %s" % (request.sid))
-
-
-@socketio.on("Client disconnected")
-def test_disconnect():
-    print("Client websocket disconnected", request.sid)
-
-
-def read_and_forward_gdb_output():
-    """A task that runs on a different thread, and emits websocket messages
-    of gdb responses"""
-
-    while True:
-        socketio.sleep(0.05)
-        controllers_to_remove = []
-        controller_items = _state.controller_to_client_ids.items()
-        for controller, client_ids in controller_items:
-            try:
-                try:
-                    response = controller.get_gdb_response(
-                        timeout_sec=0, raise_error_on_timeout=False
-                    )
-                except NoGdbProcessError:
-                    response = None
-                    send_msg_to_clients(
-                        client_ids,
-                        "The underlying gdb process has been killed. This tab will no longer function as expected.",
-                        error=True,
-                    )
-                    controllers_to_remove.append(controller)
-
-                if response:
-                    for client_id in client_ids:
-                        logger.info(
-                            "emiting message to websocket client id " + client_id
-                        )
-                        socketio.emit(
-                            "gdb_response",
-                            response,
-                            namespace="/gdb_listener",
-                            room=client_id,
-                        )
-                else:
-                    # there was no queued response from gdb, not a problem
-                    pass
-
-            except Exception:
-                logger.error(traceback.format_exc())
-
-        for controller in controllers_to_remove:
-            _state.remove_gdb_controller(controller)
-
-
-def server_error(obj):
-    return jsonify(obj), 500
-
-
-def client_error(obj):
-    return jsonify(obj), 400
-
 
 def get_extra_files():
     """returns a list of files that should be watched by the Flask server
@@ -550,213 +267,6 @@ def credentials_are_valid(username, password):
         return False
 
     return user_credentials[0] == username and user_credentials[1] == password
-
-
-@app.route("/gdbgui", methods=["GET"])
-def gdbgui():
-    """Render the main gdbgui interface"""
-    interpreter = "lldb" if app.config["LLDB"] else "gdb"
-    gdbpid = request.args.get("gdbpid", 0)
-    initial_gdb_user_command = request.args.get("initial_gdb_user_command", "")
-
-    THEMES = ["monokai", "light"]
-    # fmt: off
-    initial_data = {
-        "gdbgui_version": __version__,
-        "gdbpid": gdbpid,
-        "initial_gdb_user_command": initial_gdb_user_command,
-        "interpreter": interpreter,
-        "initial_binary_and_args": app.config["initial_binary_and_args"],
-        "project_home": app.config["project_home"],
-        "remap_sources": app.config["remap_sources"],
-        "rr": app.config["rr"],
-        "themes": THEMES,
-        "signals": SIGNAL_NAME_TO_OBJ,
-        "using_windows": USING_WINDOWS,
-    }
-    # fmt: on
-
-    return render_template(
-        "gdbgui.html",
-        version=__version__,
-        debug=app.debug,
-        interpreter=interpreter,
-        initial_data=initial_data,
-        themes=THEMES,
-    )
-
-
-@app.route("/send_signal_to_pid", methods=["POST"])
-def send_signal_to_pid():
-    signal_name = request.form.get("signal_name", "").upper()
-    pid_str = str(request.form.get("pid"))
-    try:
-        pid_int = int(pid_str)
-    except ValueError:
-        return (
-            jsonify(
-                {
-                    "message": "The pid %s cannot be converted to an integer. Signal %s was not sent."
-                    % (pid_str, signal_name)
-                }
-            ),
-            400,
-        )
-
-    if signal_name not in SIGNAL_NAME_TO_OBJ:
-        raise ValueError("no such signal %s" % signal_name)
-    signal_value = int(SIGNAL_NAME_TO_OBJ[signal_name])
-    try:
-        os.kill(pid_int, signal_value)
-    except Exception:
-        return (
-            jsonify(
-                {
-                    "message": "Process could not be killed. Is %s an active PID?"
-                    % pid_int
-                }
-            ),
-            400,
-        )
-    return jsonify(
-        {
-            "message": "sent signal %s (%s) to process id %s"
-            % (signal_name, signal_value, pid_str)
-        }
-    )
-
-
-@app.route("/dashboard", methods=["GET"])
-def dashboard():
-    """display a dashboard with a list of all running gdb processes
-    and ability to kill them, or open a new tab to work with that
-    GdbController instance"""
-    return render_template(
-        "dashboard.html",
-        processes=_state.get_dashboard_data(),
-    )
-
-
-@app.route("/shutdown", methods=["GET"])
-def shutdown_webview():
-    return render_template(
-        "shutdown.html", debug=app.debug
-    )
-
-
-@app.route("/help")
-def help():
-    return redirect("https://github.com/cs01/gdbgui/blob/master/HELP.md")
-
-
-@app.route("/_shutdown", methods=["POST"])
-def _shutdown():
-    try:
-        _state.exit_all_gdb_processes()
-    except Exception:
-        logger.error("failed to exit gdb subprocces")
-        logger.error(traceback.format_exc())
-
-    pid = os.getpid()
-    if app.debug:
-        os.kill(pid, signal.SIGINT)
-    else:
-        socketio.stop()
-
-    return jsonify({})
-
-
-@app.route("/get_last_modified_unix_sec", methods=["GET"])
-def get_last_modified_unix_sec():
-    """Get last modified unix time for a given file"""
-    path = request.args.get("path")
-    if path and os.path.isfile(path):
-        try:
-            last_modified = os.path.getmtime(path)
-            return jsonify({"path": path, "last_modified_unix_sec": last_modified})
-
-        except Exception as e:
-            return client_error({"message": "%s" % e, "path": path})
-
-    else:
-        return client_error({"message": "File not found: %s" % path, "path": path})
-
-
-@app.route("/read_file", methods=["GET"])
-def read_file():
-    """Read a file and return its contents as an array"""
-    path = request.args.get("path")
-    start_line = int(request.args.get("start_line"))
-    end_line = int(request.args.get("end_line"))
-
-    start_line = max(1, start_line)  # make sure it's not negative
-
-    try:
-        highlight = json.loads(request.args.get("highlight", "true"))
-    except Exception as e:
-        if app.debug:
-            print("Raising exception since debug is on")
-            raise e
-
-        else:
-            highlight = (
-                True  # highlight argument was invalid for some reason, default to true
-            )
-
-    if path and os.path.isfile(path):
-        try:
-            last_modified = os.path.getmtime(path)
-            with open(path, "r") as f:
-                raw_source_code_list = f.read().split("\n")
-                num_lines_in_file = len(raw_source_code_list)
-                end_line = min(
-                    num_lines_in_file, end_line
-                )  # make sure we don't try to go too far
-
-                # if leading lines are '', then the lexer will strip them out, but we want
-                # to preserve blank lines. Insert a space whenever we find a blank line.
-                for i in range((start_line - 1), (end_line)):
-                    if raw_source_code_list[i] == "":
-                        raw_source_code_list[i] = " "
-                raw_source_code_lines_of_interest = raw_source_code_list[
-                    (start_line - 1) : (end_line)
-                ]
-            try:
-                lexer = get_lexer_for_filename(path)
-            except Exception:
-                lexer = None
-
-            if lexer and highlight:
-                highlighted = True
-                # convert string into tokens
-                tokens = lexer.get_tokens("\n".join(raw_source_code_lines_of_interest))
-                # format tokens into nice, marked up list of html
-                formatter = (
-                    htmllistformatter.HtmlListFormatter()
-                )  # Don't add newlines after each line
-                source_code = formatter.get_marked_up_list(tokens)
-            else:
-                highlighted = False
-                source_code = raw_source_code_lines_of_interest
-
-            return jsonify(
-                {
-                    "source_code_array": source_code,
-                    "path": path,
-                    "last_modified_unix_sec": last_modified,
-                    "highlighted": highlighted,
-                    "start_line": start_line,
-                    "end_line": end_line,
-                    "num_lines_in_file": num_lines_in_file,
-                }
-            )
-
-        except Exception as e:
-            return client_error({"message": "%s" % e})
-
-    else:
-        return client_error({"message": "File not found: %s" % path})
-
 
 def get_gdbgui_auth_user_credentials(auth_file, user, password):
     if auth_file and (user or password):

@@ -1,11 +1,9 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h1>Hi, {{ current_user.username }}!</h1>
-    {% if current_user.is_admin() %}
-    <h1>You are Admin!</h1>
-    {% else %}
-    <h1>You are User!</h1>
-    {% endif %}
-
+{% if current_user.is_admin()  %}
+{% include "admin_requests.html" %}
+{% else %}
+{% include "user_requests.html" %}
+{% endif %}
 {% endblock %}
