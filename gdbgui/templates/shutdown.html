@@ -51,9 +51,7 @@
         <script>
           (function(){
               $.ajax({
-                  beforeSend: function(xhr) {
-                    xhr.setRequestHeader("x-csrftoken", {{ csrf_token | tojson }} );
-                  },
+
                   url: "/_shutdown",
                   cache: false,
                   method: 'POST',

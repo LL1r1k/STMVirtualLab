@@ -49,7 +49,7 @@
             url: "/remove_gdb_controller",
             cache: false,
             type: 'POST',
-            data: {gdbpid: gdbpid, signal_name: 'sigkill', csrf_token: {{ csrf_token | tojson }} },
+            data: {gdbpid: gdbpid, signal_name: 'sigkill'},
             success: function(response){
                 setTimeout(()=>window.location.reload(), 500)
             },

@@ -130,27 +130,6 @@ from gdbgui.app.routes import *
 def make_shell_context():
     return {'db': db, 'User': User}
 
-@app.before_request
-def csrf_protect_all_post_and_cross_origin_requests():
-    """returns None upon success"""
-    success = None
-
-    if is_cross_origin(request):
-        logger.warning("Received cross origin request. Aborting")
-        abort(403)
-    if request.method in ["POST", "PUT"]:
-        token = session.get("csrf_token")
-        if token == request.form.get("csrf_token"):
-            return success
-
-        elif token == request.environ.get("HTTP_X_CSRFTOKEN"):
-            return success
-
-        else:
-            logger.warning("Received invalid csrf token. Aborting")
-            abort(403)
-
-
 def is_cross_origin(request):
     """Compare headers HOST and ORIGIN. Remove protocol prefix from ORIGIN, then
     compare. Return true if they are not equal
@@ -168,27 +147,6 @@ def is_cross_origin(request):
     elif origin.startswith("https://"):
         origin = origin.replace("https://", "")
     return host != origin
-
-
-def csrf_protect(f):
-    """A decorator to add csrf protection by validing the X_CSRFTOKEN
-    field in request header"""
-
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        token = session.get("csrf_token", None)
-        if token is None or token != request.environ.get("HTTP_X_CSRFTOKEN"):
-            logger.warning("Received invalid csrf token. Aborting")
-            abort(403)
-        # call original request handler
-        return f(*args, **kwargs)
-
-    return wrapper
-
-
-def add_csrf_token_to_session():
-    if "csrf_token" not in session:
-        session["csrf_token"] = binascii.hexlify(os.urandom(20)).decode("utf-8")
 
 
 socketio = SocketIO()
@@ -323,23 +281,6 @@ def client_connected():
     if is_cross_origin(request):
         logger.warning("Received cross origin request. Aborting")
         abort(403)
-
-    csrf_token = request.args.get("csrf_token")
-    if csrf_token is None:
-        logger.warning("Recieved invalid csrf token")
-        emit("server_error", {"message": "Recieved invalid csrf token"})
-        return
-
-    elif csrf_token != session.get("csrf_token"):
-        # this can happen fairly often, so log debug message, not warning
-        logger.debug(
-            "Recieved invalid csrf token %s (expected %s)"
-            % (csrf_token, str(session.get("csrf_token")))
-        )
-        emit(
-            "server_error", {"message": "Session expired. Please refresh this webpage."}
-        )
-        return
 
     # see if user wants to connect to existing gdb pid
     desired_gdbpid = int(request.args.get("gdbpid", 0))
@@ -609,12 +550,9 @@ def gdbgui():
     gdbpid = request.args.get("gdbpid", 0)
     initial_gdb_user_command = request.args.get("initial_gdb_user_command", "")
 
-    add_csrf_token_to_session()
-
     THEMES = ["monokai", "light"]
     # fmt: off
     initial_data = {
-        "csrf_token": session["csrf_token"],
         "gdbgui_version": __version__,
         "gdbpid": gdbpid,
         "initial_gdb_user_command": initial_gdb_user_command,
@@ -681,23 +619,19 @@ def send_signal_to_pid():
 
 @app.route("/dashboard", methods=["GET"])
 def dashboard():
-    add_csrf_token_to_session()
-
     """display a dashboard with a list of all running gdb processes
     and ability to kill them, or open a new tab to work with that
     GdbController instance"""
     return render_template(
         "dashboard.html",
         processes=_state.get_dashboard_data(),
-        csrf_token=session["csrf_token"],
     )
 
 
 @app.route("/shutdown", methods=["GET"])
 def shutdown_webview():
-    add_csrf_token_to_session()
     return render_template(
-        "shutdown.html", debug=app.debug, csrf_token=session["csrf_token"]
+        "shutdown.html", debug=app.debug
     )
 
 
@@ -724,7 +658,6 @@ def _shutdown():
 
 
 @app.route("/get_last_modified_unix_sec", methods=["GET"])
-@csrf_protect
 def get_last_modified_unix_sec():
     """Get last modified unix time for a given file"""
     path = request.args.get("path")
@@ -741,7 +674,6 @@ def get_last_modified_unix_sec():
 
 
 @app.route("/read_file", methods=["GET"])
-@csrf_protect
 def read_file():
     """Read a file and return its contents as an array"""
     path = request.args.get("path")

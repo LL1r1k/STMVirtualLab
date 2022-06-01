@@ -35,7 +35,7 @@ const GdbApi = {
     /* global initial_data */
     GdbApi.socket = io.connect(`/gdb_listener`, {
       timeout: TIMEOUT_MIN * 60 * 1000,
-      query: `csrf_token=${initial_data.csrf_token}&gdbpid=${initial_data.gdbpid}`
+      query: `gdbpid=${initial_data.gdbpid}`
     });
 
     GdbApi.socket.on("connect", function() {
@@ -349,9 +349,6 @@ const GdbApi = {
   },
   get_inferior_binary_last_modified_unix_sec(path) {
     $.ajax({
-      beforeSend: function(xhr) {
-        xhr.setRequestHeader("x-csrftoken", initial_data.csrf_token);
-      },
       url: "/get_last_modified_unix_sec",
       cache: false,
       method: "GET",

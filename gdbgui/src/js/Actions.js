@@ -212,12 +212,6 @@ const Actions = {
   },
   send_signal(signal_name, pid) {
     $.ajax({
-      beforeSend: function(xhr) {
-        xhr.setRequestHeader(
-          "x-csrftoken",
-          initial_data.csrf_token
-        ); /* global initial_data */
-      },
       url: "/send_signal_to_pid",
       cache: false,
       type: "POST",
@@ -247,12 +241,7 @@ const Actions = {
   },
   compile_and_flash(pid, code) {
     $.ajax({
-      beforeSend: function(xhr) {
-        xhr.setRequestHeader(
-          "x-csrftoken",
-          initial_data.csrf_token
-        ); /* global initial_data */
-      },
+
       url: "/compile_and_flash",
       cache: false,
       type: "POST",

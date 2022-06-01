@@ -45,12 +45,6 @@ let FileFetcher = {
     };
 
     $.ajax({
-      beforeSend: function(xhr) {
-        xhr.setRequestHeader(
-          "x-csrftoken",
-          initial_data.csrf_token
-        ); /* global initial_data */
-      },
       url: "/read_file",
       cache: false,
       type: "GET",
