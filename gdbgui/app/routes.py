@@ -178,7 +178,11 @@ def compile_and_flash():
         )
 
 @app.route("/gdbgui", methods=["GET"])
+@login_required
 def gdbgui():
+    if not can_connect_to_gdb(current_user):
+        flash('Нет готовых запросов на подключение')
+        return redirect(url_for('index'))
     """Render the main gdbgui interface"""
     interpreter = "lldb" if app.config["LLDB"] else "gdb"
     gdbpid = request.args.get("gdbpid", 0)
@@ -347,11 +351,11 @@ def client_connected():
     if is_cross_origin(request):
         logger.warning("Received cross origin request. Aborting")
         abort(403)
-
+    if current_user is None or not current_user.is_authenticated:
+        return
     # see if user wants to connect to existing gdb pid
-    desired_gdbpid = int(request.args.get("gdbpid", 0))
 
-    payload = _state.connect_client(request.sid, desired_gdbpid)
+    payload = _state.connect_client(request.sid, current_user.id)
     logger.info(
         'Client websocket connected in async mode "%s", id %s'
         % (socketio.async_mode, request.sid)
@@ -393,10 +397,7 @@ def run_gdb_command(message):
 @socketio.on("disconnect", namespace="/gdb_listener")
 def client_disconnected():
     """do nothing if client disconnects"""
+    if current_user is None or not current_user.is_authenticated:
+        return
     _state.disconnect_client(request.sid)
     logger.info("Client websocket disconnected, id %s" % (request.sid))
-
-
-@socketio.on("Client disconnected")
-def test_disconnect():
-    print("Client websocket disconnected", request.sid)
