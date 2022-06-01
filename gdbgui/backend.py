@@ -45,6 +45,7 @@ from gdbgui.statemanager import StateManager
 
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_login import LoginManager
 
 pyinstaller_env_var_base_dir = "_MEIPASS"
 pyinstaller_base_dir = getattr(sys, "_MEIPASS", None)
@@ -122,13 +123,15 @@ app.secret_key = binascii.hexlify(os.urandom(24)).decode("utf-8")
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+login = LoginManager(app)
+login.login_view = 'login'
  
-from gdbgui.app.models import User
+from gdbgui.app.models import User, Access_Request, Role, UserRoles
 from gdbgui.app.routes import *
 
 @app.shell_context_processor
 def make_shell_context():
-    return {'db': db, 'User': User}
+    return {'db': db, 'User': User, 'Access_Request': Access_Request, 'Role': Role, 'UserRoles': UserRoles}
 
 def is_cross_origin(request):
     """Compare headers HOST and ORIGIN. Remove protocol prefix from ORIGIN, then
@@ -533,15 +536,6 @@ def credentials_are_valid(username, password):
 
     return user_credentials[0] == username and user_credentials[1] == password
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    
-    form = LoginForm()
-    if form.validate_on_submit():
-        flash('Login requested for user {}, remember_me={}'.format(
-            form.username.data, form.remember_me.data))
-        return redirect(url_for('index'))
-    return render_template('login.html', title='Sign In', form=form)
 
 @app.route("/gdbgui", methods=["GET"])
 def gdbgui():
