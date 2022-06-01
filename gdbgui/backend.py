@@ -43,8 +43,8 @@ from pygments.lexers import get_lexer_for_filename  # type: ignore
 from gdbgui import __version__, htmllistformatter
 from gdbgui.statemanager import StateManager
 
-# from flask_sqlalchemy import SQLAlchemy
-# from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 
 pyinstaller_env_var_base_dir = "_MEIPASS"
 pyinstaller_base_dir = getattr(sys, "_MEIPASS", None)
@@ -120,14 +120,15 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get('DATABASE_URL') or \
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.secret_key = binascii.hexlify(os.urandom(24)).decode("utf-8")
 
-# db = SQLAlchemy(app)
-# migrate = Migrate(app, db)
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
  
-# from .app.models import User
+from gdbgui.app.models import User
+from gdbgui.app.routes import *
 
-# @app.shell_context_processor
-# def make_shell_context():
-#     return {'db': db, 'User': User}
+@app.shell_context_processor
+def make_shell_context():
+    return {'db': db, 'User': User}
 
 @app.before_request
 def csrf_protect_all_post_and_cross_origin_requests():
@@ -591,31 +592,17 @@ def credentials_are_valid(username, password):
 
     return user_credentials[0] == username and user_credentials[1] == password
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    
+    form = LoginForm()
+    if form.validate_on_submit():
+        flash('Login requested for user {}, remember_me={}'.format(
+            form.username.data, form.remember_me.data))
+        return redirect(url_for('index'))
+    return render_template('login.html', title='Sign In', form=form)
 
-def authenticate(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        if app.config.get("gdbgui_auth_user_credentials") is not None:
-            auth = request.authorization
-            if (
-                not auth
-                or not auth.username
-                or not auth.password
-                or not credentials_are_valid(auth.username, auth.password)
-            ):
-                return Response(
-                    "You must log in to continue.",
-                    401,
-                    {"WWW-Authenticate": 'Basic realm="gdbgui_login"'},
-                )
-
-        return f(*args, **kwargs)
-
-    return wrapper
-
-
-@app.route("/", methods=["GET"])
-@authenticate
+@app.route("/gdbgui", methods=["GET"])
 def gdbgui():
     """Render the main gdbgui interface"""
     interpreter = "lldb" if app.config["LLDB"] else "gdb"
@@ -693,7 +680,6 @@ def send_signal_to_pid():
 
 
 @app.route("/dashboard", methods=["GET"])
-@authenticate
 def dashboard():
     add_csrf_token_to_session()
 
@@ -708,7 +694,6 @@ def dashboard():
 
 
 @app.route("/shutdown", methods=["GET"])
-@authenticate
 def shutdown_webview():
     add_csrf_token_to_session()
     return render_template(
