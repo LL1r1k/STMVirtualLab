@@ -4,7 +4,7 @@
 A server that provides a graphical user interface to the gnu debugger (gdb).
 https://github.com/cs01/gdbgui
 """
-
+from enum import Enum
 import argparse
 import binascii
 import json
@@ -46,6 +46,7 @@ from gdbgui.statemanager import StateManager
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager
+from flask_bootstrap import Bootstrap
 
 pyinstaller_env_var_base_dir = "_MEIPASS"
 pyinstaller_base_dir = getattr(sys, "_MEIPASS", None)
@@ -121,6 +122,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get('DATABASE_URL') or \
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.secret_key = binascii.hexlify(os.urandom(24)).decode("utf-8")
 
+bootstrap = Bootstrap(app)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 login = LoginManager(app)
@@ -128,6 +130,19 @@ login.login_view = 'login'
  
 from gdbgui.app.models import User, Access_Request, Role, UserRoles
 from gdbgui.app.routes import *
+
+class Roles(Enum):
+    Admin = 'Admin'
+    User = 'User'
+
+class Statuses(Enum):
+    Сonfirmed = 'Сonfirmed'
+    Canceled = 'Canceled'
+    Created = 'Created'
+
+# db.session.add(Role(name=Roles.Admin.value))
+# db.session.add(Role(name=Roles.User.value))
+# db.session.commit()
 
 @app.shell_context_processor
 def make_shell_context():

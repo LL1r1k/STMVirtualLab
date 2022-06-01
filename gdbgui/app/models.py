@@ -1,4 +1,4 @@
-from datetime import datetime
+from sqlalchemy import event
 
 from gdbgui.backend import db
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -15,6 +15,16 @@ class User(UserMixin, db.Model):
 
     def __repr__(self):
         return '<User {}>'.format(self.username) 
+
+    def set_role(self, role):
+        if role not in self.roles:
+            self.roles.append(role)
+
+    def is_admin(self):
+        for role in self.roles:
+            if 'Admin' in role.name:
+                return True
+        return False
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -47,7 +57,6 @@ class Access_Request(db.Model):
 
     def __repr__(self):
         return '<Access_Request {}>'.format(self.user_id)
-
 
 @login.user_loader
 def load_user(id):

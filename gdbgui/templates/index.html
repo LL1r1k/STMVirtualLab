@@ -2,5 +2,10 @@
 
 {% block content %}
     <h1>Hi, {{ current_user.username }}!</h1>
-    <h1>You are {{ current_user.roles[0].name }}!</h1>
+    {% if current_user.is_admin() %}
+    <h1>You are Admin!</h1>
+    {% else %}
+    <h1>You are User!</h1>
+    {% endif %}
+
 {% endblock %}
