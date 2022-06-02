@@ -28,7 +28,7 @@ def index():
     else:
         update_request_status(current_user)
 
-    return render_template('index.html', title='Home', users=users)
+    return render_template('index.html', title='Главная', users=users)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -38,14 +38,14 @@ def login():
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user is None or not user.check_password(form.password.data):
-            flash('Invalid username or password')
+            flash('Неправильный логин или пароль')
             return redirect(url_for('login'))
         login_user(user, remember=form.remember_me.data)
         next_page = request.args.get('next')
         if not next_page or url_parse(next_page).netloc != '':
             next_page = url_for('index')
         return redirect(next_page)
-    return render_template('login.html', title='Sign In', form=form)
+    return render_template('login.html', title='Логин', form=form)
 
 @app.route('/access_request', methods=['GET', 'POST'])
 @login_required
@@ -82,9 +82,9 @@ def register():
 
         db.session.add(user)
         db.session.commit()
-        flash('Congratulations, you are now a registered user!')
+        flash('Вы успешно зарегистрировались.')
         return redirect(url_for('login'))
-    return render_template('register.html', title='Register', form=form)
+    return render_template('register.html', title='Регистрация', form=form)
 
 @app.route("/remove_request", methods=["POST"])
 def remove_request():
@@ -94,9 +94,9 @@ def remove_request():
     if req is not None:
         db.session.delete(req)
         db.session.commit()
-        flash('Request deleted')
+        flash('Запрос удален')
     else:
-        flash('Request not found')
+        flash('Запрос не найден')
 
     return jsonify({})
 
@@ -107,15 +107,11 @@ def change_request_status():
 
     req = Access_Request.query.filter_by(id=request_id).first()
     if req is not None:
-        if req.status != "Ready":
-            req.status=new_status
-            db.session.commit()
-
-            flash('Request changed')
-        else:
-            flash('Request cannot be changed ')
+        req.status=new_status
+        db.session.commit()
+        flash('Заспрос изменен')
     else:
-        flash('Request not found')
+        flash('Запрос не найден')
 
     return jsonify({})
     

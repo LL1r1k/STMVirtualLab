@@ -19,7 +19,7 @@ let onkeyup_jump_to_line = e => {
 };
 
 
-let show_license = function() {
+let show_license = function () {
   Actions.show_modal(
     "gdbgui license",
     <React.Fragment>
@@ -43,7 +43,7 @@ let show_license = function() {
 };
 
 let About = {
-  show_about: function() {
+  show_about: function () {
     Actions.show_modal(
       "About gdbgui",
       <React.Fragment>Copyright © Chad Smith, grassfedcode.com</React.Fragment>
@@ -51,7 +51,7 @@ let About = {
   }
 };
 
-let show_session_info = function() {
+let show_session_info = function () {
   Actions.show_modal(
     "session information",
     <React.Fragment>
@@ -212,7 +212,7 @@ class TopBar extends React.Component {
     return (
       <div
         role="group"
-        style={{ marginBottom: 12, marginLeft: 6, marginTop: 6, height: 25, width: 250 }}
+        style={{ marginBottom: 12, marginLeft: 6,marginRight: 6, marginTop: 6, height: 25,}}
         className="btn-group btn-group"
       >
         <ToolTipTourguide
@@ -245,7 +245,7 @@ class TopBar extends React.Component {
     let toggle_assm_button = "";
     if (
       this.state.source_code_state ===
-        constants.source_code_states.ASSM_AND_SOURCE_CACHED ||
+      constants.source_code_states.ASSM_AND_SOURCE_CACHED ||
       this.state.source_code_state === constants.source_code_states.ASSM_CACHED
     ) {
       toggle_assm_button = (
@@ -267,7 +267,7 @@ class TopBar extends React.Component {
     let reload_button_disabled = "disabled";
     if (
       this.state.source_code_state ===
-        constants.source_code_states.ASSM_AND_SOURCE_CACHED ||
+      constants.source_code_states.ASSM_AND_SOURCE_CACHED ||
       this.state.source_code_state === constants.source_code_states.SOURCE_CACHED
     ) {
       reload_button_disabled = "";
@@ -322,22 +322,25 @@ class TopBar extends React.Component {
     return (
       <div
         id="top"
-        style={{ background: "#f5f6f7", position: "absolute", width: "100%"}}
+        style={{ background: "#f5f6f7", position: "absolute", width: "100%" }}
       >
         <div className="flexrow">
+          <div
+            style={{ marginRight: "0", marginLeft: "10px", marginTop: "4px" }}
+          >
+          <a class="btn btn-default" href="/">Главная страница</a>
+          </div>
           {this.get_controls()}
-        
-          <div 
+          <div
             id="menu"
-            style={{marginRight: "0", marginLeft: "auto", marginTop: "10px"}}
-          >          
+            style={{ marginRight: "0", marginLeft: "auto", marginTop: "10px" }}
+          >
             <span
               onClick={() => Settings.toggle_key("show_settings")}
               title="settings"
               className="pointer glyphicon glyphicon-cog"
               style={{ marginRight: "10px", fontSize: "1.3em" }}
             />
-            {menu}
           </div>
         </div>
       </div>
