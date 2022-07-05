@@ -56,7 +56,7 @@ def compile_program(code):
     with open(f'{file_name}.s', "w", newline='\n') as f:
         f.write(code, )
 
-    compile_str = f'arm-none-eabi-as.exe -g -o {file_name}.o {file_name}.s'
+    compile_str = f'arm-none-eabi-as -g -o {file_name}.o {file_name}.s'
 
     compile_proc = subprocess.Popen(compile_str, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     error = compile_proc.communicate()[1].decode("utf-8")
@@ -65,7 +65,7 @@ def compile_program(code):
         logger.info(f'Compile Error: {error}')
         raise ValueError(error)
 
-    link_str = f'arm-none-eabi-ld.exe -o {file_name}.elf -T stm32f103.ld {file_name}.o'
+    link_str = f'arm-none-eabi-ld -o {file_name}.elf -T stm32f103.ld {file_name}.o'
 
     link_proc = subprocess.Popen(link_str, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     error = link_proc.communicate()[1].decode("utf-8")
