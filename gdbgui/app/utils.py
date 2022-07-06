@@ -78,10 +78,13 @@ def compile_program(code):
 
 def clear_tmp_dir():
     path = './tmp/'
-    for file_name in os.listdir(path):
-        file = path + file_name
-        if os.path.isfile(file):
-            os.remove(file)
+    if os.path.exists(path) :
+        for file_name in os.listdir(path):
+            file = path + file_name
+            if os.path.isfile(file):
+                os.remove(file)
+    else :
+        os.mkdir(path)
 
 def server_error(obj):
     return jsonify(obj), 500
