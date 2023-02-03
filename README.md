@@ -1,25 +1,52 @@
-<p align="center">
-<a href="http://gdbgui.com"><img src="https://github.com/cs01/gdbgui/raw/master/images/gdbgui_banner.png"></a>
-</p>
+На текущий момент основная ветка проекта: dev
 
-<h3 align="center">
-A modern, browser-based frontend to gdb (gnu debugger)
-</h3>
+Исходный код удаленной лаборатории расположен на веб-сервисе для IT-проектов и их совместной разработки GiHub. Репозиторий позволяет контролировать версии системы. Последняя стабильная версия находится в ветке Main. 
 
-<p align="center">
-<a href="https://travis-ci.org/cs01/gdbgui">
-<img src="https://travis-ci.org/cs01/gdbgui.svg?branch=master" alt="image" /></a>
+После успешного скачивания проекта необходимо установить необходимые зависимости. Для автоматизации установки используется утилита nox. Для установки nox необходимо в консоли ввести: 
 
-<a href="https://pypi.python.org/pypi/gdbgui/">
-<img src="https://img.shields.io/badge/pypi-0.13.2.0-blue.svg" alt="image" />
-</a>
+    pip install --user nox
 
-<img src="https://pepy.tech/badge/gdbgui" alt="image" />
+ Также для мониторинга JavaScript файлов используется утилита yarn. Для установки yarn необходимо ввести:
+ 
+    npm install yarn
 
-</p>
+Шаги для начала разработки системы: 
+1) запустить консоль; 
+2) ввести: nox -s develop; 
+3) активировать виртуальную среду develop. 
 
----
+После подготовки среды необходимо инициализировать базу данных и добавить в нее администратора. Для инициализации базы данных можно использовать следующие команды: 
 
-**Documentation**: https://gdbgui.com
+    flask db init 
+    flask db migrate 
+    flask db upgrade 
 
-**Source Code**: https://github.com/cs01/gdbgui/
+Далее необходимо добавить аккаунт для администратора. Для этого можно использовать Flask Shell. Shell запускает консоль Python в контексте приложения Flask. Это значит, что все объекты внутри контекстов приложения и запроса будут доступны в консоли без создания дополнительных контекстов. Для запуска консоли необходимо ввести следующую команду: 
+
+    flask shell
+
+ В консоли приложения Flask необходимо создать роли для обычных пользователей и администратора, а также создать администратора с соответствующей ролью. Для этого необходимо ввести следующие команды: 
+
+    admin_role = Role(name=”Admin”) 
+    db.session.add(admin_role) 
+    db.session.add(Role(name=”User”)) 
+    admin = User(username=”Admin”) 
+    admin. set_password(<Пароль администратора>) 
+    admin.set_role(role) 
+    db.session.add(admin) 
+    db.commit() 
+
+Для отладки текущей версии приложения можно использовать: 
+
+    python -m gdbgui –debug 
+
+Данная команда: 
+1) автоматически перезагружает сервер при обнаружении внесенных вами изменений; 
+2) добавляет новый компонент в нижней части правой боковой панели под названием «Выход машинного интерфейса gdb», который отображает необработанный вывод gdb mi, чтобы помочь вам в отладке;
+3) отображает все изменения данных состояния в консоли разработчика браузера, например `rendered_source_file_fullname null -> /home/chad/git/gdbgui/examples/hello.c`.
+
+Для внесения изменений в JavaScript файлы можно воспользоваться утилитой yarn командой: 
+
+    yarn start 
+
+Данная команду будет автоматические пересобрать build.js файл при обнаружении внесенных вами изменений.
